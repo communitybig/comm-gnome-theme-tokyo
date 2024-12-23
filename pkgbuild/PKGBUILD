@@ -25,7 +25,10 @@ fi
 
 package() {
     cd "$srcdir"
-
+    # Create destination directories
+    mkdir -p "${pkgdir}/usr/share/icons"
+    mkdir -p "${pkgdir}/usr/share/themes"
+    mkdir -p "${pkgdir}/usr/share/wallpapers"
     # Extract themes and icons
     tar -I zstd -xf Nordic-cursors.tar.zst -C "${pkgdir}/usr/share/icons"
     tar -I zstd -xf Tokyonight-Dark-Icons.tar.zst -C "${pkgdir}/usr/share/icons"
