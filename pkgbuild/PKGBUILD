@@ -13,7 +13,7 @@ source=(
     "Tokyonight-Dark-Theme.tar.zst"
     "tokyonight1.avif"
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
 install="pkgbuild.install"
 
 # Automatically detect and use the correct install file
