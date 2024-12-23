@@ -71,6 +71,9 @@ post_install() {
         gsettings set org.gnome.desktop.background picture-uri-dark 'file:///usr/share/wallpapers/tokyonight1.avif';
         gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/wallpapers/tokyonight1.avif';
     "
+    # Update icon cache
+    echo "Updating icon cache for TokyoNight-Dark-Icons..."
+    gtk-update-icon-cache -f /usr/share/icons/Tokyonight-Dark-Icons
 
     if [ $? -eq 0 ]; then
         echo "TokyoNight-Dark theme applied successfully for user $user!"
@@ -105,12 +108,12 @@ post_remove() {
     su - "$user" -c "
         export DISPLAY=:0;
         export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
-        gsettings reset org.gnome.desktop.interface cursor-theme;
-        gsettings reset org.gnome.desktop.interface icon-theme;
-        gsettings reset org.gnome.shell.extensions.user-theme name;
-        gsettings reset org.gnome.desktop.interface gtk-theme;
-        gsettings reset org.gnome.desktop.background picture-uri-dark;
-        gsettings reset org.gnome.desktop.background picture-uri;
+        gsettings set org.gnome.desktop.interface cursor-theme 'Bibata-Modern-Classic';
+        gsettings set org.gnome.desktop.interface icon-theme 'bigicons-papient-dark';
+        gsettings set org.gnome.shell.extensions.user-theme name 'Big-Blue';
+        gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark';
+        gsettings set org.gnome.desktop.background picture-uri-dark 'file:///usr/share/wallpapers/animal-owl8.avif';
+        gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/wallpapers/animal-owl8.avif';
     "
 
     # Remove GTK configurations
@@ -121,6 +124,24 @@ post_remove() {
     if [ -d "$GTK3_DIR" ]; then
         echo "Removing GTK 3 configuration..."
         rm -rf "$GTK3_DIR"
+    fi
+
+    if [ -d "$BACKUP_DIR" ]; then
+        echo "Restoring GTK configurations from backup..."
+
+        for backup_file in "$BACKUP_DIR"/*.tar.gz; do
+            if [[ "$backup_file" =~ gtk-4.0 ]]; then
+                echo "Restoring GTK 4 configuration from $backup_file..."
+                mkdir -p "$GTK4_DIR"
+                tar -xzf "$backup_file" -C "$(dirname "$GTK4_DIR")"
+            elif [[ "$backup_file" =~ gtk-3.0 ]]; then
+                echo "Restoring GTK 3 configuration from $backup_file..."
+                mkdir -p "$GTK3_DIR"
+                tar -xzf "$backup_file" -C "$(dirname "$GTK3_DIR")"
+            fi
+        done
+    else
+        echo "No backup directory found. Skipping restoration."
     fi
 
     echo "Default GNOME settings restored and GTK configurations cleaned."
