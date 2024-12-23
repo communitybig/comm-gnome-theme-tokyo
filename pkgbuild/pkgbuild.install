@@ -115,6 +115,9 @@ post_remove() {
         gsettings set org.gnome.desktop.background picture-uri-dark 'file:///usr/share/wallpapers/animal-owl8.avif';
         gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/wallpapers/animal-owl8.avif';
     "
+    # Update icon cache
+    echo "Updating icon cache for TokyoNight-Dark-Icons..."
+    gtk-update-icon-cache -f /usr/share/icons/bigicons-papient-dark
 
     # Remove GTK configurations
     if [ -d "$GTK4_DIR" ]; then
