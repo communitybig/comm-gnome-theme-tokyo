@@ -7,15 +7,76 @@ pre_install() {
 
 # Function executed after package installation
 post_install() {
-    echo "Applying TokyoNight-Dark theme for GNOME..."
+    echo "Applying TokyoNight-Dark theme for GNOME and configuring GTK..."
 
-    # Apply GNOME settings
-    gsettings set org.gnome.desktop.interface cursor-theme 'Nordic-cursors'
-    gsettings set org.gnome.desktop.interface icon-theme 'Tokyonight-Dark-Icons'
-    gsettings set org.gnome.shell.extensions.user-theme name 'Tokyonight-Dark-Theme'
-    gsettings set org.gnome.desktop.interface gtk-theme 'Tokyonight-Dark-Theme'
-    gsettings set org.gnome.desktop.background picture-uri-dark "file:///usr/share/wallpapers/tokyonight1.avif"
-    gsettings set org.gnome.desktop.background picture-uri "file:///usr/share/wallpapers/tokyonight1.avif"
+    # Get the username of the user running the package installation
+    user=$(logname)
+    user_home=$(getent passwd "$user" | cut -d: -f6)
+
+    if [ -z "$user_home" ]; then
+        echo "Could not determine the home directory for user $user. Skipping theme application."
+        return
+    fi
+
+    # Directories
+    GTK4_DIR="$user_home/.config/gtk-4.0"
+    GTK3_DIR="$user_home/.config/gtk-3.0"
+    THEMES_DIR="/usr/share/themes"
+    BACKUP_DIR="$user_home/backup_customizations"
+
+    # Backup function
+    backup_directory() {
+        local dir="$1"
+        local backup_path="$BACKUP_DIR/$(basename "$dir")-$(date +%Y%m%d%H%M%S).tar.gz"
+
+        mkdir -p "$BACKUP_DIR"
+        if [ -d "$dir" ]; then
+            echo "Backing up $dir to $backup_path"
+            tar -czf "$backup_path" -C "$(dirname "$dir")" "$(basename "$dir")"
+        else
+            echo "Directory $dir does not exist. Skipping backup."
+        fi
+    }
+
+    # Backup and update GTK 4 configuration
+    if [ -d "$GTK4_DIR" ]; then
+        echo "Directory $GTK4_DIR already exists. Backing up..."
+        backup_directory "$GTK4_DIR"
+    else
+        echo "Directory $GTK4_DIR not found. Creating..."
+        mkdir -p "$GTK4_DIR"
+    fi
+    cp -rp $THEMES_DIR/Tokyonight-Dark-Theme/gtk-4.0/* "$GTK4_DIR/"
+
+    # Backup and update GTK 3 configuration
+    if [ -d "$GTK3_DIR" ]; then
+        echo "Directory $GTK3_DIR already exists. Backing up..."
+        backup_directory "$GTK3_DIR"
+    else
+        echo "Directory $GTK3_DIR not found. Creating..."
+        mkdir -p "$GTK3_DIR"
+    fi
+    cp -rp $THEMES_DIR/Tokyonight-Dark-Theme/gtk-3.0/* "$GTK3_DIR/"
+
+    # Apply GNOME theme settings
+    echo "Applying GNOME settings for user $user..."
+
+    su - "$user" -c "
+        export DISPLAY=:0;
+        export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
+        gsettings set org.gnome.desktop.interface cursor-theme 'Nordic-cursors';
+        gsettings set org.gnome.desktop.interface icon-theme 'Tokyonight-Dark-Icons';
+        gsettings set org.gnome.shell.extensions.user-theme name 'Tokyonight-Dark-Theme';
+        gsettings set org.gnome.desktop.interface gtk-theme 'Tokyonight-Dark-Theme';
+        gsettings set org.gnome.desktop.background picture-uri-dark 'file:///usr/share/wallpapers/tokyonight1.avif';
+        gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/wallpapers/tokyonight1.avif';
+    "
+
+    if [ $? -eq 0 ]; then
+        echo "TokyoNight-Dark theme applied successfully for user $user!"
+    else
+        echo "Failed to apply TokyoNight-Dark theme. Please run 'apply-gnome-theme' manually."
+    fi
 }
 
 # Function executed before package removal
@@ -25,7 +86,11 @@ pre_remove() {
 
 # Function executed after package removal
 post_remove() {
-    echo "Restoring default GNOME settings..."
+    echo "Restoring default GNOME settings and cleaning GTK configurations..."
+
+    # Directories
+    GTK4_DIR="$HOME/.config/gtk-4.0"
+    GTK3_DIR="$HOME/.config/gtk-3.0"
 
     # Reset GNOME settings to default
     gsettings reset org.gnome.desktop.interface cursor-theme
@@ -34,4 +99,16 @@ post_remove() {
     gsettings reset org.gnome.desktop.interface gtk-theme
     gsettings reset org.gnome.desktop.background picture-uri-dark
     gsettings reset org.gnome.desktop.background picture-uri
+
+    # Remove GTK configurations
+    if [ -d "$GTK4_DIR" ]; then
+        echo "Removing GTK 4 configuration..."
+        rm -rf "$GTK4_DIR"
+    fi
+    if [ -d "$GTK3_DIR" ]; then
+        echo "Removing GTK 3 configuration..."
+        rm -rf "$GTK3_DIR"
+    fi
+
+    echo "Default GNOME settings restored and GTK configurations cleaned."
 }
