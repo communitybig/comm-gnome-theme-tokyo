@@ -8,10 +8,10 @@ arch=('any')
 url="https://github.com/communitybig/${pkgname}"
 license=('MIT')
 source=(
-    "../source/Nordic-cursors.tar.zst"
-    "../source/Tokyonight-Dark-Icons.tar.zst"
-    "../source/Tokyonight-Dark-Theme.tar.zst"
-    "../source/tokyonight1.avif"
+    "source/Nordic-cursors.tar.zst"
+    "source/Tokyonight-Dark-Icons.tar.zst"
+    "source/Tokyonight-Dark-Theme.tar.zst"
+    "source/tokyonight1.avif"
 )
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
 install="pkgbuild.install"
@@ -32,10 +32,10 @@ package() {
     mkdir -p "${pkgdir}/usr/share/wallpapers"
 
     # Extract themes and icons
-    tar -I zstd -xf "../source/Nordic-cursors.tar.zst" -C "${pkgdir}/usr/share/icons"
-    tar -I zstd -xf "../source/Tokyonight-Dark-Icons.tar.zst" -C "${pkgdir}/usr/share/icons"
-    tar -I zstd -xf "../source/Tokyonight-Dark-Theme.tar.zst" -C "${pkgdir}/usr/share/themes"
+    tar -I zstd -xf "source/Nordic-cursors.tar.zst" -C "${pkgdir}/usr/share/icons"
+    tar -I zstd -xf "source/Tokyonight-Dark-Icons.tar.zst" -C "${pkgdir}/usr/share/icons"
+    tar -I zstd -xf "source/Tokyonight-Dark-Theme.tar.zst" -C "${pkgdir}/usr/share/themes"
 
     # Install wallpaper
-    install -Dm644 "../source/tokyonight1.avif" "${pkgdir}/usr/share/wallpapers/tokyonight1.avif"
+    install -Dm644 "source/tokyonight1.avif" "${pkgdir}/usr/share/wallpapers/tokyonight1.avif"
 }
