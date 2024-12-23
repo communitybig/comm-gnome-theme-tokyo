@@ -61,6 +61,11 @@ post_install() {
     # Apply GNOME theme settings
     echo "Applying GNOME settings for user $user..."
 
+    # Update icon cache
+    echo "Updating icon cache for TokyoNight-Dark-Icons..."
+    gtk-update-icon-cache -f /usr/share/icons/Tokyonight-Dark-Icons
+    sleep 3
+    
     su - "$user" -c "
         export DISPLAY=:0;
         export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
@@ -71,9 +76,6 @@ post_install() {
         gsettings set org.gnome.desktop.background picture-uri-dark 'file:///usr/share/wallpapers/tokyonight1.avif';
         gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/wallpapers/tokyonight1.avif';
     "
-    # Update icon cache
-    echo "Updating icon cache for TokyoNight-Dark-Icons..."
-    gtk-update-icon-cache -f /usr/share/icons/Tokyonight-Dark-Icons
 
     if [ $? -eq 0 ]; then
         echo "TokyoNight-Dark theme applied successfully for user $user!"
