@@ -53,10 +53,17 @@ post_install() {
         else
             mkdir -p "$dir"
         fi
+        # Set correct ownership for GTK directories
+        chown -R "$user:$user" "$dir"      
     done
-
+    
+    # Copy files and set ownership
     cp -rp "$THEMES_DIR/Tokyonight-Dark-Theme/gtk-4.0/"* "$GTK4_DIR/"
     cp -rp "$THEMES_DIR/Tokyonight-Dark-Theme/gtk-3.0/"* "$GTK3_DIR/"
+
+    chown -R "$user:$user" "$GTK4_DIR"
+    chown -R "$user:$user" "$GTK3_DIR"
+    chown -R "$user:$user" "$user_home/backup_customizations"    
 
     # Update icon cache
     echo "Updating icon cache for TokyoNight-Dark-Icons..."
