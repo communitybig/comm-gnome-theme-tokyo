@@ -26,16 +26,19 @@ post_install() {
     fi
 
     # Backup current GNOME settings
-
     echo "Backing up current GNOME settings to $backup_file..."
-    {
-        echo "org.gnome.desktop.interface cursor-theme $(gsettings get org.gnome.desktop.interface cursor-theme)"
-        echo "org.gnome.desktop.interface icon-theme $(gsettings get org.gnome.desktop.interface icon-theme)"
-        echo "org.gnome.shell.extensions.user-theme name $(gsettings get org.gnome.shell.extensions.user-theme name)"
-        echo "org.gnome.desktop.interface gtk-theme $(gsettings get org.gnome.desktop.interface gtk-theme)"
-        echo "org.gnome.desktop.background picture-uri-dark $(gsettings get org.gnome.desktop.background picture-uri-dark)"
-        echo "org.gnome.desktop.background picture-uri $(gsettings get org.gnome.desktop.background picture-uri)"
-    } > "$backup_file"
+    su - "$user" -c "
+        export DISPLAY=:0;
+        export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
+        {
+            echo org.gnome.desktop.interface cursor-theme \$(gsettings get org.gnome.desktop.interface cursor-theme);
+            echo org.gnome.desktop.interface icon-theme \$(gsettings get org.gnome.desktop.interface icon-theme);
+            echo org.gnome.shell.extensions.user-theme name \$(gsettings get org.gnome.shell.extensions.user-theme name);
+            echo org.gnome.desktop.interface gtk-theme \$(gsettings get org.gnome.desktop.interface gtk-theme);
+            echo org.gnome.desktop.background picture-uri-dark \$(gsettings get org.gnome.desktop.background picture-uri-dark);
+            echo org.gnome.desktop.background picture-uri \$(gsettings get org.gnome.desktop.background picture-uri);
+        } > \"$backup_file\"
+    "
 
     # Directories
     GTK4_DIR="$user_home/.config/gtk-4.0"
@@ -56,10 +59,16 @@ post_install() {
     cp -rp "$THEMES_DIR/Tokyonight-Dark-Theme/gtk-3.0/"* "$GTK3_DIR/"
 
     # Update icon cache
+    echo "Updating icon cache for TokyoNight-Dark-Icons..."
     gtk-update-icon-cache -f /usr/share/icons/Tokyonight-Dark-Icons
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to update icon cache."
+        return 1
+    fi
     sleep 3
 
     # Apply GNOME settings
+    echo "Applying GNOME settings for user $user..."
     su - "$user" -c "
         export DISPLAY=:0;
         export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
@@ -69,6 +78,15 @@ post_install() {
         gsettings set org.gnome.desktop.interface gtk-theme 'Tokyonight-Dark-Theme';
         gsettings set org.gnome.desktop.background picture-uri-dark 'file:///usr/share/wallpapers/tokyonight1.avif';
         gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/wallpapers/tokyonight1.avif';
+    "
+
+    # Verify if settings were applied
+    echo "Verifying GNOME settings..."
+    su - "$user" -c "
+        export DISPLAY=:0;
+        export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
+        echo 'Cursor Theme:' \$(gsettings get org.gnome.desktop.interface cursor-theme);
+        echo 'Icon Theme:' \$(gsettings get org.gnome.desktop.interface icon-theme);
     "
 
     echo "TokyoNight-Dark theme applied successfully!"
