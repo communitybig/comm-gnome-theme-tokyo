@@ -3,69 +3,62 @@
 # Function executed before package installation
 pre_install() {
     echo "Preparing to install TokyoNight-Dark theme for GNOME..."
+
+    # Check if GNOME is in use
+    if [ "$XDG_CURRENT_DESKTOP" != "GNOME" ]; then
+        echo "Error: GNOME is not the current desktop environment."
+        echo "This package is only compatible with GNOME."
+        exit 1
+    fi
 }
 
 # Function executed after package installation
 post_install() {
     echo "Applying TokyoNight-Dark theme for GNOME and configuring GTK..."
 
-    # Get the username of the user running the package installation
     user=$(logname)
     user_home=$(getent passwd "$user" | cut -d: -f6)
+    backup_file="$user_home/.config/gnome-settings-backup.txt"
 
     if [ -z "$user_home" ]; then
         echo "Could not determine the home directory for user $user. Skipping theme application."
         return
     fi
 
+    # Backup current GNOME settings
+    echo "Backing up current GNOME settings to $backup_file..."
+    {
+        echo "cursor-theme: $(gsettings get org.gnome.desktop.interface cursor-theme)"
+        echo "icon-theme: $(gsettings get org.gnome.desktop.interface icon-theme)"
+        echo "user-theme: $(gsettings get org.gnome.shell.extensions.user-theme name)"
+        echo "gtk-theme: $(gsettings get org.gnome.desktop.interface gtk-theme)"
+        echo "background-dark: $(gsettings get org.gnome.desktop.background picture-uri-dark)"
+        echo "background: $(gsettings get org.gnome.desktop.background picture-uri)"
+    } > "$backup_file"
+
     # Directories
     GTK4_DIR="$user_home/.config/gtk-4.0"
     GTK3_DIR="$user_home/.config/gtk-3.0"
     THEMES_DIR="/usr/share/themes"
-    BACKUP_DIR="$user_home/backup_customizations"
 
-    # Backup function
-    backup_directory() {
-        local dir="$1"
-        local backup_path="$BACKUP_DIR/$(basename "$dir")-$(date +%Y%m%d%H%M%S).tar.gz"
-
-        mkdir -p "$BACKUP_DIR"
+    # Backup and update GTK configurations
+    for dir in "$GTK4_DIR" "$GTK3_DIR"; do
         if [ -d "$dir" ]; then
-            echo "Backing up $dir to $backup_path"
-            tar -czf "$backup_path" -C "$(dirname "$dir")" "$(basename "$dir")"
+            mkdir -p "$user_home/backup_customizations"
+            tar -czf "$user_home/backup_customizations/$(basename "$dir")-$(date +%Y%m%d%H%M%S).tar.gz" -C "$(dirname "$dir")" "$(basename "$dir")"
         else
-            echo "Directory $dir does not exist. Skipping backup."
+            mkdir -p "$dir"
         fi
-    }
+    done
 
-    # Backup and update GTK 4 configuration
-    if [ -d "$GTK4_DIR" ]; then
-        echo "Directory $GTK4_DIR already exists. Backing up..."
-        backup_directory "$GTK4_DIR"
-    else
-        echo "Directory $GTK4_DIR not found. Creating..."
-        mkdir -p "$GTK4_DIR"
-    fi
-    cp -rp $THEMES_DIR/Tokyonight-Dark-Theme/gtk-4.0/* "$GTK4_DIR/"
-
-    # Backup and update GTK 3 configuration
-    if [ -d "$GTK3_DIR" ]; then
-        echo "Directory $GTK3_DIR already exists. Backing up..."
-        backup_directory "$GTK3_DIR"
-    else
-        echo "Directory $GTK3_DIR not found. Creating..."
-        mkdir -p "$GTK3_DIR"
-    fi
-    cp -rp $THEMES_DIR/Tokyonight-Dark-Theme/gtk-3.0/* "$GTK3_DIR/"
-
-    # Apply GNOME theme settings
-    echo "Applying GNOME settings for user $user..."
+    cp -rp "$THEMES_DIR/Tokyonight-Dark-Theme/gtk-4.0/"* "$GTK4_DIR/"
+    cp -rp "$THEMES_DIR/Tokyonight-Dark-Theme/gtk-3.0/"* "$GTK3_DIR/"
 
     # Update icon cache
-    echo "Updating icon cache for TokyoNight-Dark-Icons..."
     gtk-update-icon-cache -f /usr/share/icons/Tokyonight-Dark-Icons
     sleep 3
-    
+
+    # Apply GNOME settings
     su - "$user" -c "
         export DISPLAY=:0;
         export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
@@ -77,11 +70,7 @@ post_install() {
         gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/wallpapers/tokyonight1.avif';
     "
 
-    if [ $? -eq 0 ]; then
-        echo "TokyoNight-Dark theme applied successfully for user $user!"
-    else
-        echo "Failed to apply TokyoNight-Dark theme. Please run 'apply-gnome-theme' manually."
-    fi
+    echo "TokyoNight-Dark theme applied successfully!"
 }
 
 # Function executed before package removal
@@ -93,61 +82,33 @@ pre_remove() {
 post_remove() {
     echo "Restoring default GNOME settings and cleaning GTK configurations..."
 
-    # Get the username of the user running the package removal
     user=$(logname)
     user_home=$(getent passwd "$user" | cut -d: -f6)
+    backup_file="$user_home/.config/gnome-settings-backup.txt"
 
     if [ -z "$user_home" ]; then
         echo "Could not determine the home directory for user $user. Skipping theme removal."
         return
     fi
 
-    # Directories
-    GTK4_DIR="$user_home/.config/gtk-4.0"
-    GTK3_DIR="$user_home/.config/gtk-3.0"
-
-    # Reset GNOME settings to default
-    su - "$user" -c "
-        export DISPLAY=:0;
-        export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
-        gsettings set org.gnome.desktop.interface cursor-theme 'Bibata-Modern-Classic';
-        gsettings set org.gnome.desktop.interface icon-theme 'bigicons-papient-dark';
-        gsettings set org.gnome.shell.extensions.user-theme name 'Big-Blue';
-        gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark';
-        gsettings set org.gnome.desktop.background picture-uri-dark 'file:///usr/share/wallpapers/animal-owl8.avif';
-        gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/wallpapers/animal-owl8.avif';
-    "
-    # Update icon cache
-    echo "Updating icon cache for TokyoNight-Dark-Icons..."
-    gtk-update-icon-cache -f /usr/share/icons/bigicons-papient-dark
-
-    # Remove GTK configurations
-    if [ -d "$GTK4_DIR" ]; then
-        echo "Removing GTK 4 configuration..."
-        rm -rf "$GTK4_DIR"
-    fi
-    if [ -d "$GTK3_DIR" ]; then
-        echo "Removing GTK 3 configuration..."
-        rm -rf "$GTK3_DIR"
-    fi
-
-    if [ -d "$BACKUP_DIR" ]; then
-        echo "Restoring GTK configurations from backup..."
-
-        for backup_file in "$BACKUP_DIR"/*.tar.gz; do
-            if [[ "$backup_file" =~ gtk-4.0 ]]; then
-                echo "Restoring GTK 4 configuration from $backup_file..."
-                mkdir -p "$GTK4_DIR"
-                tar -xzf "$backup_file" -C "$(dirname "$GTK4_DIR")"
-            elif [[ "$backup_file" =~ gtk-3.0 ]]; then
-                echo "Restoring GTK 3 configuration from $backup_file..."
-                mkdir -p "$GTK3_DIR"
-                tar -xzf "$backup_file" -C "$(dirname "$GTK3_DIR")"
-            fi
-        done
+    if [ -f "$backup_file" ]; then
+        echo "Restoring GNOME settings from $backup_file..."
+        su - "$user" -c "
+            export DISPLAY=:0;
+            export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u "$user")/bus;
+            $(awk -F': ' '{printf "gsettings set org.gnome.desktop.%s %s;\n", $1, $2}' "$backup_file")
+        "
+        rm "$backup_file"
     else
-        echo "No backup directory found. Skipping restoration."
+        echo "No GNOME settings backup found. Skipping restoration."
     fi
 
-    echo "Default GNOME settings restored and GTK configurations cleaned."
+    echo "Removing GTK configurations..."
+    for dir in "$GTK4_DIR" "$GTK3_DIR"; do
+        if [ -d "$dir" ]; then
+            rm -rf "$dir"
+        fi
+    done
+
+    echo "Default GNOME settings restored."
 }
