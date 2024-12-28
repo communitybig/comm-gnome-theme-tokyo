@@ -1,6 +1,6 @@
 # Maintainer: Leonardo Berbert <leo4berbert@gmail.com>
 
-pkgname=comm-gnome-tokyo-theme
+pkgname=comm-gnome-theme-tokyo
 pkgdesc="TokyoNight-Dark GNOME theme with icons, cursors, and wallpaper"
 pkgver=$(date +%y.%m.%d)
 pkgrel=$(date +%H%M)
